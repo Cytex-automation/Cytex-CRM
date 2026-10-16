@@ -1,37 +1,32 @@
-import os
 import sqlite3
+import pandas as pd
 import streamlit as st
 
 # ==========================================
-# CONFIGURATION DE LA PAGE & CHARTE GRAPHIQUE
+# CONFIGURATION DE LA PAGE
 # ==========================================
 st.set_page_config(
-    page_title="CRM Cytex Automation - Projets & Offres",
+    page_title="Cytex Automation - Offres & Gestion Commerciale",
     page_icon="⚡",
     layout="wide",
 )
 
-# Application de la charte graphique Cytex Automation
+# Style CSS aux normes de la charte graphique et des rapports officiels
 st.markdown(
     """
     <style>
-    .main {
-        background-color: #0f1115;
-        color: #ffffff;
-    }
-    h1, h2, h3 {
-        color: #f4b41a;
-        font-family: 'Sora', sans-serif;
+    .main { background-color: #f8f9fa; color: #111111; }
+    h1, h2, h3 { color: #1e293b; font-family: 'Sora', sans-serif; }
+    .report-header {
+        border-bottom: 3px solid #f4b41a;
+        padding-bottom: 15px;
+        margin-bottom: 25px;
     }
     .stButton>button {
         background-color: #f4b41a;
         color: #0f1115;
         font-weight: bold;
-        border-radius: 5px;
-    }
-    .stButton>button:hover {
-        background-color: #d19a12;
-        color: #ffffff;
+        border-radius: 4px;
     }
     </style>
     """,
@@ -39,7 +34,7 @@ st.markdown(
 )
 
 # ==========================================
-# GESTION DE LA BASE DE DONNÉES (SQLite)
+# BASE DE DONNÉES (SQLite)
 # ==========================================
 DB_NAME = "cytex_crm.db"
 
@@ -48,19 +43,16 @@ def init_db():
   conn = sqlite3.connect(DB_NAME)
   cursor = conn.cursor()
   cursor.execute("""
-        CREATE TABLE IF NOT EXISTS projets (
+        CREATE TABLE IF NOT EXISTS offres (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            code_projet TEXT UNIQUE,
-            nom_projet TEXT,
+            ref_offre TEXT UNIQUE,
+            client_nom TEXT,
+            client_attn TEXT,
+            date_offre TEXT,
             type_projet TEXT,
-            client TEXT,
-            date_debut TEXT,
-            responsable TEXT,
+            objet TEXT,
+            montant_total REAL,
             statut TEXT,
-            temps_estime REAL,
-            temps_reel REAL,
-            date_reception TEXT,
-            statut_reception TEXT,
             remarques TEXT
         )
     """)
@@ -84,168 +76,165 @@ def run_query(query, params=(), fetch=False):
 
 
 # ==========================================
-# INTERFACE UTILISATEUR (UI)
+# INTERFACE UTILISATEUR
 # ==========================================
 
-st.title("⚡ CYTEX AUTOMATION - CRM & Gestion de Projets")
-st.markdown(
-    "Plateforme unifiée de gestion commerciale, des offres et des projets"
-    " techniques."
-)
-
-# Barre latérale pour la navigation
 st.sidebar.header("Navigation")
 menu = st.sidebar.selectbox(
     "Aller à",
     [
-        "Tableau de Bord & Projets",
-        "Ajouter une Offre / Projet",
-        "Gestion & Suivi",
+        "📄 Générateur d'Offre (Format Officiel)",
+        "📋 Tableau de Bord Commercial",
+        "➕ Créer une Offre",
     ],
 )
 
-# Photos de garde par défaut selon le type de projet
 PHOTOS_GARDE = {
     "Photovoltaïque": "https://images.unsplash.com/photo-1509391365360-e944cf9659d7?auto=format&fit=crop&w=1000&q=80",
     "Domotique": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=1000&q=80",
     "Immotique": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80",
 }
 
-if menu == "Tableau de Bord & Projets":
-  st.header("📋 Vue d'ensemble des Projets & Offres")
-
-  filtre_type = st.sidebar.selectbox(
-      "Filtrer par type",
-      ["Tous", "Photovoltaïque", "Domotique", "Immotique"],
+if menu == "📄 Générateur d'Offre (Format Officiel)":
+  st.markdown(
+      """
+    <div class="report-header">
+        <h1>CYTEX AUTOMATION</h1>
+        <p><b>Commercial Proposal & Technical Project Management</b> | Document Officiel d'Offre</p>
+    </div>
+    """,
+      unsafe_allow_html=True,
   )
 
-  if filtre_type == "Tous":
-    projets = run_query("SELECT * FROM projets", fetch=True)
-  else:
-    projets = run_query(
-        "SELECT * FROM projets WHERE type_projet = ?", (filtre_type,), fetch=True
-    )
-
-  if not projets:
+  offres = run_query("SELECT * FROM offres", fetch=True)
+  if not offres:
     st.info(
-        "Aucun projet enregistré pour le moment. Utilisez l'onglet 'Ajouter une"
-        " Offre / Projet'."
+        "Aucune offre enregistrée. Veuillez utiliser l'onglet 'Créer une Offre'."
     )
   else:
-    for p in projets:
-      with st.expander(f"📁 [{p[1]}] {p[2]} — Client: {p[4]} ({p[3]})"):
-        col1, col2 = st.columns([1, 2])
+    refs = [o[1] for o in offres]
+    selected_ref = st.selectbox("Sélectionner l'Offre / Projet à éditer", refs)
 
-        with col1:
-          type_p = p[3]
-          img_url = PHOTOS_GARDE.get(type_p, PHOTOS_GARDE["Domotique"])
-          st.image(
-              img_url,
-              caption=f"Type : {type_p}",
-              use_container_width=True,
-          )
+    offre = [o for o in offres if o[1] == selected_ref][0]
+    # offre structure: id(0), ref(1), client(2), attn(3), date(4), type(5), objet(6), montant(7), statut(8), rem(9)
 
-        with col2:
-          st.markdown(f"**Responsable :** {p[6]}")
-          st.markdown(f"**Date de début :** {p[5]}")
-          st.markdown(f"**Statut Actuel :** `{p[7]}`")
-          st.markdown(
-              f"**Temps (Estimé / Réel) :** {p[8]}h / {p[9]}h"
-          )
-          st.markdown(
-              f"**Réception :** {p[10]} (Statut : *{p[11]}*)"
-          )
-          st.markdown(f"**Remarques :** {p[12]}")
-
-elif menu == "Ajouter une Offre / Projet":
-  st.header("➕ Créer une nouvelle Offre ou un nouveau Projet")
-
-  with st.form("form_projet"):
-    col1, col2 = st.columns(2)
-
+    col1, col2 = st.format = st.columns([2, 1])
     with col1:
-      code_projet = st.text_input(
-          "Code Projet / Réf", value="PRJ-2026-004"
+      st.markdown(f"### Réf : **{offre[1]}**")
+      st.markdown(f"**Date :** {offre[4]}")
+      st.markdown(f"**Client :** {offre[2]}")
+      st.markdown(f"**À l'attention de :** {offre[3]}")
+      st.markdown(f"**Objet :** {offre[6]}")
+    with col2:
+      type_p = offre[5]
+      st.image(
+          PHOTOS_GARDE.get(type_p, PHOTOS_GARDE["Domotique"]),
+          caption=f"Couverture - {type_p}",
+          use_container_width=True,
       )
-      nom_projet = st.text_input(
-          "Nom du Projet", value="Installation Smart Home"
-      )
+
+    st.markdown("---")
+    st.subheader("1. Bill of Quantities (Détail estimatif)")
+    st.markdown(
+        """
+        | S.No | Description des Équipements / Prestations | Type / Spécification | Qte | Prix Unitaire (TND) | Total (TND) |
+        | :--- | :--- | :--- | :---: | :---: | :---: |
+        | 1 | Étude technique, ingénierie et synoptique | Standard | 1 | 1,200.00 | 1,200.00 |
+        | 2 | Fourniture et pose des équipements principaux | """
+        + offre[5]
+        + """ | 1 | """
+        + f"{offre[7]:,.2f}"
+        + """ | """
+        + f"{offre[7]:,.2f}"
+        + """ |
+        | 3 | Câblage, raccordement et mise en service | Sur site | 1 | 850.00 | 850.00 |
+        """
+    )
+
+    st.subheader("2. Scope of Works (Étendue des Travaux)")
+    st.markdown(
+        "- Installation complète selon les règles de l'art et les normes de sécurité en vigueur.\n"
+        "- Tests de bon fonctionnement, paramétrage initial et remise des manuels d'utilisation.\n"
+        "- Formation de l'équipe technique du client sur site."
+    )
+
+    st.subheader("3. Client's Scope (Engagements Client)")
+    st.markdown(
+        "- Fournir l'accès sécurisé au site et l'énergie nécessaire pour les travaux.\n"
+        "- Obtenir les autorisations administratives préalables si requis."
+    )
+
+    st.subheader("4. Commercial Proposal Summary")
+    st.success(f"**Montant Total HT de l'Offre : {offre[7]:,.2f} TND**")
+    st.markdown(f"**Statut Actuel de l'Offre :** `{offre[8]}`")
+    st.markdown(f"**Remarques particulières :** {offre[9]}")
+
+elif menu == "➕ Créer une Offre":
+  st.header("➕ Établir une Nouvelle Offre Commerciale")
+
+  with st.form("form_offre"):
+    col1, col2 = st.columns(2)
+    with col1:
+      ref_offre = st.text_input("Référence Offre", value="CYTEX-OFF-2026-01")
+      client_nom = st.text_input("Nom de l'Entreprise / Client")
+      client_attn = st.text_input("À l'attention de (Contact)")
+      date_offre = st.date_input("Date de l'offre")
+    with col2:
       type_projet = st.selectbox(
           "Type de Projet", ["Photovoltaïque", "Domotique", "Immotique"]
       )
-      client = st.text_input("Nom du Client")
-      date_debut = st.date_input("Date de Début")
-
-    with col2:
-      responsable = st.text_input("Responsable Technique / Commercial")
+      objet = st.text_input(
+          "Objet de l'Offre", value="Installation et mise en service"
+      )
+      montant_total = st.number_input(
+          "Montant Total Proposé (TND)", value=5500.0
+      )
       statut = st.selectbox(
-          "Statut",
+          "Statut Commercial",
           [
-              "Étude & Plans",
-              "Offre Envoyée",
-              "Commande",
-              "Chantier en cours",
-              "Réceptionné",
+              "En attente de validation",
+              "Offre Validée / Bon de Commande",
+              "En cours de réalisation",
+              "Clôturé / Réceptionné",
           ],
       )
-      temps_estime = st.number_input("Temps Estimé (heures)", value=40.0)
-      temps_reel = st.number_input("Temps Réel (heures)", value=0.0)
-      date_reception = st.date_input("Date Réception Prévisionnelle")
-      statut_reception = st.selectbox(
-          "Statut Réception", ["Non démarré", "En attente", "PV Signé"]
-      )
 
-    remarques = st.text_area("Remarques & Historique des offres")
+    remarques = st.text_area(
+        "Notes et conditions particulières (Validité, Délais...)"
+    )
 
-    submit = st.form_submit_button("Enregistrer le Projet")
-
+    submit = st.form_submit_button("Enregistrer l'Offre")
     if submit:
       try:
         run_query(
             """
-                    INSERT INTO projets (code_projet, nom_projet, type_projet, client, date_debut, responsable, statut, temps_estime, temps_reel, date_reception, statut_reception, remarques)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO offres (ref_offre, client_nom, client_attn, date_offre, type_projet, objet, montant_total, statut, remarques)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             (
-                code_projet,
-                nom_projet,
+                ref_offre,
+                client_nom,
+                client_attn,
+                str(date_offre),
                 type_projet,
-                client,
-                str(date_debut),
-                responsable,
+                objet,
+                montant_total,
                 statut,
-                temps_estime,
-                temps_reel,
-                str(date_reception),
-                statut_reception,
                 remarques,
             ),
         )
         st.success(
-            "✅ Projet / Offre enregistré avec succès dans la base de données !"
+            "✅ Offre enregistrée avec succès ! Vous pouvez la visualiser dans"
+            " l'onglet 'Générateur d'Offre'."
         )
       except sqlite3.IntegrityError:
-        st.error(
-            "Erreur : Un projet avec ce code existe déjà. Veuillez modifier le"
-            " code."
-        )
+        st.error("Erreur : Cette référence d'offre existe déjà.")
 
-elif menu == "Gestion & Suivi":
-  st.header("📊 Indicateurs Clés & Exportation")
-
-  projets = run_query("SELECT * FROM projets", fetch=True)
-  if projets:
-    st.metric("Nombre total de projets / offres", len(projets))
-
-    if st.button("📥 Télécharger les données (CSV)"):
-      import pandas as pd
-
-      df = pd.read_sql_query("SELECT * FROM projets", sqlite3.connect(DB_NAME))
-      st.download_button(
-          label="Confirmer le téléchargement CSV",
-          data=df.to_csv(index=False).encode("utf-8"),
-          file_name="CytexAutomation_CRM_Export.csv",
-          mime="text/csv",
-      )
+elif menu == "📋 Tableau de Bord Commercial":
+  st.header("📊 Suivi Global des Offres et Projets")
+  df = pd.read_sql_query("SELECT * FROM offres", sqlite3.connect(DB_NAME))
+  if not df.empty:
+    st.dataframe(df, use_container_width=True)
+    st.metric("Chiffre d'affaires potentiel (Total)", f"{df['montant_total'].sum():,.2f} TND")
   else:
-    st.info("Aucune donnée disponible.")
+    st.info("Aucune donnée à afficher.")
