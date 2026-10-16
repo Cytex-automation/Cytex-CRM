@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# Application de la charte graphique Cytex Automation (Couleurs & Styles CSS)
+# Application de la charte graphique Cytex Automation
 st.markdown(
     """
     <style>
@@ -20,7 +20,7 @@ st.markdown(
         color: #ffffff;
     }
     h1, h2, h3 {
-        color: #f4b41a; /* Jaune / Or de la charte Cytex Automation */
+        color: #f4b41a;
         font-family: 'Sora', sans-serif;
     }
     .stButton>button {
@@ -87,16 +87,15 @@ def run_query(query, params=(), fetch=False):
 # INTERFACE UTILISATEUR (UI)
 # ==========================================
 
-# En-tête avec Logo / Identité Cytex Automation
 st.title("⚡ CYTEX AUTOMATION - CRM & Gestion de Projets")
 st.markdown(
     "Plateforme unifiée de gestion commerciale, des offres et des projets"
     " techniques."
 )
 
-# Barre latérale pour la navigation et filtres
+# Barre latérale pour la navigation
 st.sidebar.header("Navigation")
-menu = st.sidebar.选择(
+menu = st.sidebar.selectbox(
     "Aller à",
     [
         "Tableau de Bord & Projets",
@@ -105,7 +104,7 @@ menu = st.sidebar.选择(
     ],
 )
 
-# Photos de garde par défaut selon le type de projet (liens ou images locales)
+# Photos de garde par défaut selon le type de projet
 PHOTOS_GARDE = {
     "Photovoltaïque": "https://images.unsplash.com/photo-1509391365360-e944cf9659d7?auto=format&fit=crop&w=1000&q=80",
     "Domotique": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=1000&q=80",
@@ -115,7 +114,6 @@ PHOTOS_GARDE = {
 if menu == "Tableau de Bord & Projets":
   st.header("📋 Vue d'ensemble des Projets & Offres")
 
-  # Filtre par type de projet
   filtre_type = st.sidebar.selectbox(
       "Filtrer par type",
       ["Tous", "Photovoltaïque", "Domotique", "Immotique"],
@@ -135,12 +133,10 @@ if menu == "Tableau de Bord & Projets":
     )
   else:
     for p in projets:
-      # p structure: id(0), code(1), nom(2), type(3), client(4), date_d(5), resp(6), statut(7), t_est(8), t_reel(9), date_rec(10), s_rec(11), rem(12)
       with st.expander(f"📁 [{p[1]}] {p[2]} — Client: {p[4]} ({p[3]})"):
         col1, col2 = st.columns([1, 2])
 
         with col1:
-          # Affichage de la photo de garde selon le type de projet
           type_p = p[3]
           img_url = PHOTOS_GARDE.get(type_p, PHOTOS_GARDE["Domotique"])
           st.image(
@@ -241,7 +237,6 @@ elif menu == "Gestion & Suivi":
   if projets:
     st.metric("Nombre total de projets / offres", len(projets))
 
-    # Option pour exporter en CSV pour partage Drive
     if st.button("📥 Télécharger les données (CSV)"):
       import pandas as pd
 
